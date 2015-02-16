@@ -1,12 +1,10 @@
-#ifndef NOTIFICATIONMEDIATOR_H_
-#define NOTIFICATIONMEDIATOR_H_
+#ifndef _NotificationMediator_h_
+#define _NotificationMediator_h_
 
 #include "Event.h"
 
 #include <map>
 #include <list>
-#include <algorithm>
-#include <set>
 #include <typeinfo>
 
 class NotificationMediator
@@ -19,11 +17,7 @@ public:
     typedef void(Observer::*ObserverMemberCallback)(Subject const *s, Event const &event);
     typedef void(*Callback)(Subject const *s, Observer &o, Event const &event);
 
-    Binding()
-    : _observer(0)
-    , _observerCallback(0)
-    , _nonMemberCallback(0)
-    {}
+    Binding();
 
     template <typename S, typename O, typename E>
     Binding(S const &s, O &o, void(O::*callback)(S const *s, E const &event))
@@ -53,23 +47,8 @@ public:
       _nonMemberCallback = (Callback)callback;
     }
 
-    void notify(Subject const &s, Event const &event)
-    {
-      if (!_observer)
-        return;
-
-      if (_observerCallback)
-        (*_observer.*_observerCallback)(&s, event);
-      else if (_nonMemberCallback)
-        (*_nonMemberCallback)(&s, *_observer, event);
-    }
-
-    void reset()
-    {
-      _observer = 0;
-      _observerCallback = 0;
-      _nonMemberCallback = 0;
-    }
+    void notify(Subject const &s, Event const &event);
+    void reset();
 
     friend bool operator==(Binding const &first, Binding const &second);
 
@@ -146,61 +125,17 @@ private:
   typedef std::map<void const *, EventBindingMap> SubjectEventMap;
 
   SubjectEventMap _subjectEventMap;
-  std::list<Binding *> _bindingPool;
+  BindingList _bindingPool;
 
-protected:
-  void removeBinding(void const *s, Binding const &binding, std::type_info const *eventInfo)
-  {
-    if (BindingList *bindings = hasBindings(s, eventInfo))
-    {
-      BindingList::iterator it = find(*bindings, binding);
-      if (it != bindings->end())
-      {
-        bindings->remove(*it);
-        (*it)->reset();
-        _bindingPool.push_back(*it);
-      }
-    }
-  }
+  void removeBinding(void const *s, Binding const &binding, std::type_info const *eventInfo);
 
-  Binding *has(void const *s, Binding const &binding, std::type_info const *eventInfo)
-  {
-    if (BindingList *bindings = hasBindings(s, eventInfo))
-    {
-      BindingList::iterator it = find(*bindings, binding);
-      if (it != bindings->end())
-        return *it;
-    }
-    return 0LL;
-  }
+  Binding *has(void const *s, Binding const &binding, std::type_info const *eventInfo);
 
-  BindingList *hasBindings(void const *s, std::type_info const *eventInfo)
-  {
-    SubjectEventMap::iterator subjectEventIterator = _subjectEventMap.find(s);
-    if (subjectEventIterator != _subjectEventMap.end())
-    {
-      EventBindingMap &eventBindings = subjectEventIterator->second;
-      EventBindingMap::iterator eventBindingIterator = eventBindings.find(eventInfo);
-      if (eventBindingIterator != eventBindings.end())
-      {
-        BindingList &bindings = eventBindingIterator->second;
-        return &bindings;
-      }
-    }
-    return 0LL;
-  }
+  BindingList *hasBindings(void const *s, std::type_info const *eventInfo);
 
-  BindingList::iterator find(BindingList &list, Binding const &binding)
-  {
-    BindingList::iterator n = list.begin();
-    for (; n != list.end(); ++n)
-    {
-      if (**n == binding)
-        break;
-    }
+  BindingList::iterator find(BindingList &list, Binding const &binding);
 
-    return n;
-  }
+  void deleteBindings(BindingList &list);
 
   template <typename S, typename O, typename E>
   Binding *buildbinding(S const &s, O &o, void (O::*callback)(S const *s, E const &event))
@@ -241,4 +176,4 @@ protected:
 
 bool operator==(NotificationMediator::Binding const &first,
                 NotificationMediator::Binding const &second);
-#endif /* NOTIFICATIONMEDIATOR_H_ */
+#endif
