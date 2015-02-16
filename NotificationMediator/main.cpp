@@ -4,12 +4,12 @@
 
 #include <iostream>
 
-void receiver(TestSubject const *, TestObserver &o, TestSubject::TestEvent const &event)
+void receiver(TestSubject const &, TestObserver &o, TestSubject::TestEvent const &event)
 {
   std::cout << "TestEvent receiver is called" << std::endl;
 }
 
-void otherReceiver(TestSubject const *, TestObserver &o, TestSubject::OtherEvent const &event)
+void otherReceiver(TestSubject const &, TestObserver &o, TestSubject::OtherEvent const &event)
 {
   std::cout << "OtherEvent receiver is called" << std::endl;
 }

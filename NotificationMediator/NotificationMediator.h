@@ -14,27 +14,27 @@ public:
   {
     class Subject;
     class Observer;
-    typedef void(Observer::*ObserverMemberCallback)(Subject const *s, Event const &event);
-    typedef void(*Callback)(Subject const *s, Observer &o, Event const &event);
+    typedef void(Observer::*ObserverMemberCallback)(Subject const &s, Event const &event);
+    typedef void(*Callback)(Subject const &s, Observer &o, Event const &event);
 
     Binding();
 
     template <typename S, typename O, typename E>
-    Binding(S const &s, O &o, void(O::*callback)(S const *s, E const &event))
+    Binding(S const &s, O &o, void(O::*callback)(S const &s, E const &event))
       : _observer((Observer *)&o)
       , _observerCallback((ObserverMemberCallback)callback)
       , _nonMemberCallback(0)
       {}
 
     template <typename S, typename O, typename E>
-    Binding(S const &s, O &o,  void(*callback)(S const *s, O &o, E const &event))
+    Binding(S const &s, O &o,  void(*callback)(S const &s, O &o, E const &event))
       : _observer((Observer *)&o)
       , _observerCallback(0)
       , _nonMemberCallback((Callback)callback)
       {}
 
     template <typename S, typename O, typename E>
-    void bind(S const &s, O &o, void(O::*callback)(S const *s, E const &event))
+    void bind(S const &s, O &o, void(O::*callback)(S const &s, E const &event))
     {
       _observer = (Observer *)&o;
       _observerCallback = (ObserverMemberCallback)callback;
@@ -42,7 +42,7 @@ public:
     }
 
     template <typename S, typename O, typename E>
-    void bind(S const &s, O &o, void(*callback)(S const *s, O &o, E const &event))
+    void bind(S const &s, O &o, void(*callback)(S const &s, O &o, E const &event))
     {
       _observer = (Observer *)&o;
       _observerCallback = 0LL;
@@ -66,7 +66,7 @@ public:
   static NotificationMediator &getSingleton();
 
   template <typename S, typename O, typename E>
-  void connect(S const &s, O &o, void (O::*callback)(S const *s, E const &event))
+  void connect(S const &s, O &o, void (O::*callback)(S const &s, E const &event))
   {
     Binding binding(s, o, callback);
     if (!has(&s, binding, &typeid(E)))
@@ -76,7 +76,7 @@ public:
   }
 
   template <typename S, typename O, typename E>
-  void connect(S const &s, O &o, void (*callback)(S const *s, O &o, E const &event))
+  void connect(S const &s, O &o, void (*callback)(S const &s, O &o, E const &event))
   {
     Binding binding(s, o, callback);
     if (!has(&s, binding, &typeid(E)))
@@ -86,14 +86,14 @@ public:
   }
 
   template <typename S, typename O, typename E>
-  void disConnect(S const &s, O &o, void (O::*callback)(S const *s, E const &event))
+  void disConnect(S const &s, O &o, void (O::*callback)(S const &s, E const &event))
   {
     Binding binding(s, o, callback);
     removeBinding(&s, binding, &typeid(E));
   }
 
   template <typename S, typename O, typename E>
-  void disConnect(S const &s, O &o, void (*callback)(S const *s, O &o, E const &event))
+  void disConnect(S const &s, O &o, void (*callback)(S const &s, O &o, E const &event))
   {
     Binding binding(s, o, callback);
     removeBinding(&s, binding, &typeid(E));
@@ -140,7 +140,7 @@ private:
   void deleteBindings(BindingList &list);
 
   template <typename S, typename O, typename E>
-  Binding *buildbinding(S const &s, O &o, void (O::*callback)(S const *s, E const &event))
+  Binding *buildbinding(S const &s, O &o, void (O::*callback)(S const &s, E const &event))
   {
     Binding *binding = 0LL;
     if (_bindingPool.empty())
@@ -158,7 +158,7 @@ private:
   }
 
   template <typename S, typename O, typename E>
-  Binding *buildbinding(S const &s, O &o, void (*callback)(S const *s, O &o, E const &event))
+  Binding *buildbinding(S const &s, O &o, void (*callback)(S const &s, O &o, E const &event))
   {
     Binding *binding = 0LL;
     if (_bindingPool.empty())

@@ -11,7 +11,7 @@ public:
   TestObserver();
   virtual ~TestObserver();
 
-  void callback(TestSubject const *, TestSubject::TestEvent const &)
+  void callback(TestSubject const &, TestSubject::TestEvent const &)
   {
     std::cout << "Calling back" << std::endl;
   }

@@ -52,9 +52,9 @@ NotificationMediator::Binding::notify(Subject const &s, Event const &event)
     return;
 
   if (_observerCallback)
-    (*_observer.*_observerCallback)(&s, event);
+    (*_observer.*_observerCallback)(s, event);
   else if (_nonMemberCallback)
-    (*_nonMemberCallback)(&s, *_observer, event);
+    (*_nonMemberCallback)(s, *_observer, event);
 }
 
 void
