@@ -9,7 +9,7 @@
 
 class NotificationMediator
 {
-public:
+protected:
   struct Binding
   {
     class Subject;
@@ -52,12 +52,12 @@ public:
     void notify(Subject const &s, Event const &event);
     void reset();
 
-    friend bool operator==(Binding const &first, Binding const &second);
-
     Observer *_observer;
     ObserverMemberCallback _observerCallback;
     Callback _nonMemberCallback;
   };
+
+  friend bool operator==(Binding const &first, Binding const &second);
 
 public:
   NotificationMediator();
