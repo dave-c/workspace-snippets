@@ -38,12 +38,14 @@ public:
     {
       _observer = (Observer *)&o;
       _observerCallback = (ObserverMemberCallback)callback;
+      _nonMemberCallback = 0LL;
     }
 
     template <typename S, typename O, typename E>
     void bind(S const &s, O &o, void(*callback)(S const *s, O &o, E const &event))
     {
       _observer = (Observer *)&o;
+      _observerCallback = 0LL;
       _nonMemberCallback = (Callback)callback;
     }
 
