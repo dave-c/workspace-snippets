@@ -7,32 +7,33 @@
 #include <list>
 #include <algorithm>
 #include <set>
+#include <typeinfo>
 
 class NotificationMediator
 {
 public:
-  struct NotificationContract
+  struct Binding
   {
     class Subject;
     class Observer;
     typedef void(Observer::*ObserverMemberCallback)(Subject const *s, Event const &event);
     typedef void(*Callback)(Subject const *s, Observer &o, Event const &event);
 
-    NotificationContract()
+    Binding()
     : _observer(0)
     , _observerCallback(0)
     , _nonMemberCallback(0)
     {}
 
     template <typename S, typename O, typename E>
-    NotificationContract(S const &s, O &o, void(O::*callback)(S const *s, E const &event))
+    Binding(S const &s, O &o, void(O::*callback)(S const *s, E const &event))
       : _observer((Observer *)&o)
       , _observerCallback((ObserverMemberCallback)callback)
       , _nonMemberCallback(0)
       {}
 
     template <typename S, typename O, typename E>
-    NotificationContract(S const &s, O &o,  void(*callback)(S const *s, O &o, E const &event))
+    Binding(S const &s, O &o,  void(*callback)(S const *s, O &o, E const &event))
       : _observer((Observer *)&o)
       , _observerCallback(0)
       , _nonMemberCallback((Callback)callback)
@@ -70,7 +71,7 @@ public:
       _nonMemberCallback = 0;
     }
 
-    friend bool operator==(NotificationContract const &first, NotificationContract const &second);
+    friend bool operator==(Binding const &first, Binding const &second);
 
     Observer *_observer;
     ObserverMemberCallback _observerCallback;
@@ -86,94 +87,115 @@ public:
   template <typename S, typename O, typename E>
   void connect(S const &s, O &o, void (O::*callback)(S const *s, E const &event))
   {
-    NotificationContract contract(s, o, callback);
-    if (!has(&s, contract))
+    Binding binding(s, o, callback);
+    if (!has(&s, binding, &typeid(E)))
     {
-      _subjectContractMap[(void const*)&s].push_back(buildContract(s, o, callback));
+      _subjectEventMap[(void const*)&s][&typeid(E)].push_back(buildbinding(s, o, callback));
     }
   }
 
   template <typename S, typename O, typename E>
   void connect(S const &s, O &o, void (*callback)(S const *s, O &o, E const &event))
   {
-    NotificationContract contract(s, o, callback);
-    if (!has(&s, contract))
+    Binding binding(s, o, callback);
+    if (!has(&s, binding, &typeid(E)))
     {
-      _subjectContractMap[(void const*)&s].push_back(buildContract(s, o, callback));
+      _subjectEventMap[(void const*)&s][&typeid(E)].push_back(buildbinding(s, o, callback));
     }
   }
 
   template <typename S, typename O, typename E>
   void disConnect(S const &s, O &o, void (O::*callback)(S const *s, E const &event))
   {
-    NotificationContractList &list = _subjectContractMap[(void const *)&s];
-    NotificationContract contract(s, o, callback);
-    NotificationContractList::iterator it = find(list, contract);
-    if (it != list.end())
-    {
-      list.remove(*it);
-      (*it)->reset();
-      _contractPool.push_back(*it);
-    }
+    Binding binding(s, o, callback);
+    removeBinding(&s, binding, &typeid(E));
   }
 
   template <typename S, typename O, typename E>
-  void disConnect(S const &s, O &o, void (*callback)(S const *s, O const *o, E const &event))
+  void disConnect(S const &s, O &o, void (*callback)(S const *s, O &o, E const &event))
   {
-    NotificationContractList &list = _subjectContractMap[(void const *)&s];
-    NotificationContract contract(s, o, callback);
-    NotificationContractList::iterator it = find(list, contract);
-    if (it != list.end())
-    {
-      list.remove(*it);
-      (*it)->reset();
-      _contractPool.push_back(*it);
-    }
+    Binding binding(s, o, callback);
+    removeBinding(&s, binding, &typeid(E));
   }
 
   template <typename S, typename E>
   void notify(S const &s, E const &event)
   {
-    SubjectContractMap::iterator it = _subjectContractMap.find((void*)&s);
-    if (it != _subjectContractMap.end())
+    if (BindingList *bindings = hasBindings(&s, &typeid(E)))
     {
-      NotificationContractList &contracts = it->second;
-      for (NotificationContractList::iterator it = contracts.begin(); it != contracts.end(); ++it)
+      for (BindingList::iterator it = bindings->begin(); it != bindings->end(); ++it)
       {
-        (*it)->notify((NotificationContract::Subject const &)s, event);
+        (*it)->notify((Binding::Subject const &)s, event);
       }
     }
   }
 
 private:
+  struct EventComparator
+  {
+    bool operator()(std::type_info const* first, std::type_info const *second)
+    {
+      return first->before(*second);
+    }
+  };
+
   static NotificationMediator *_singleton;
 
-  typedef std::list<NotificationContract *> NotificationContractList;
-  typedef std::map<size_t, NotificationContractList> EventContractMap;
-  typedef std::map<void const *, NotificationContractList> SubjectContractMap;
+  typedef std::list<Binding *> BindingList;
+  typedef std::map<std::type_info const *, BindingList, EventComparator> EventBindingMap;
+  typedef std::map<void const *, EventBindingMap> SubjectEventMap;
 
-  SubjectContractMap _subjectContractMap;
-  std::list<NotificationContract *> _contractPool;
+  SubjectEventMap _subjectEventMap;
+  std::list<Binding *> _bindingPool;
 
 protected:
-  NotificationContract *has(void const *s, NotificationContract &contract)
+  void removeBinding(void const *s, Binding const &binding, std::type_info const *eventInfo)
   {
-    SubjectContractMap::iterator cit = _subjectContractMap.find(s);
-    if (cit != _subjectContractMap.end())
+    if (BindingList *bindings = hasBindings(s, eventInfo))
     {
-      NotificationContractList::iterator it = find(cit->second, contract);
-      if (it != cit->second.end())
+      BindingList::iterator it = find(*bindings, binding);
+      if (it != bindings->end())
+      {
+        bindings->remove(*it);
+        (*it)->reset();
+        _bindingPool.push_back(*it);
+      }
+    }
+  }
+
+  Binding *has(void const *s, Binding const &binding, std::type_info const *eventInfo)
+  {
+    if (BindingList *bindings = hasBindings(s, eventInfo))
+    {
+      BindingList::iterator it = find(*bindings, binding);
+      if (it != bindings->end())
         return *it;
     }
     return 0LL;
   }
 
-  NotificationContractList::iterator find(NotificationContractList &list, NotificationContract &contract)
+  BindingList *hasBindings(void const *s, std::type_info const *eventInfo)
   {
-    NotificationContractList::iterator n = list.begin();
+    SubjectEventMap::iterator subjectEventIterator = _subjectEventMap.find(s);
+    if (subjectEventIterator != _subjectEventMap.end())
+    {
+      EventBindingMap &eventBindings = subjectEventIterator->second;
+      EventBindingMap::iterator eventBindingIterator = eventBindings.find(eventInfo);
+      if (eventBindingIterator != eventBindings.end())
+      {
+        BindingList &bindings = eventBindingIterator->second;
+        return &bindings;
+      }
+    }
+    return 0LL;
+  }
+
+  BindingList::iterator find(BindingList &list, Binding const &binding)
+  {
+    BindingList::iterator n = list.begin();
     for (; n != list.end(); ++n)
     {
-      if (**n == contract)
+      if (**n == binding)
         break;
     }
 
@@ -181,42 +203,42 @@ protected:
   }
 
   template <typename S, typename O, typename E>
-  NotificationContract *buildContract(S const &s, O &o, void (O::*callback)(S const *s, E const &event))
+  Binding *buildbinding(S const &s, O &o, void (O::*callback)(S const *s, E const &event))
   {
-    NotificationContract *contract = 0LL;
-    if (_contractPool.empty())
+    Binding *binding = 0LL;
+    if (_bindingPool.empty())
     {
-      contract = new NotificationContract(s, o, callback);
+      binding = new Binding(s, o, callback);
     }
     else
     {
-      contract = _contractPool.back();
-      contract->bind(s, o, callback);
-      _contractPool.pop_back();
+      binding = _bindingPool.back();
+      binding->bind(s, o, callback);
+      _bindingPool.pop_back();
     }
 
-    return contract;
+    return binding;
   }
 
   template <typename S, typename O, typename E>
-  NotificationContract *buildContract(S const &s, O &o, void (*callback)(S const *s, O &o, E const &event))
+  Binding *buildbinding(S const &s, O &o, void (*callback)(S const *s, O &o, E const &event))
   {
-    NotificationContract *contract = 0LL;
-    if (_contractPool.empty())
+    Binding *binding = 0LL;
+    if (_bindingPool.empty())
     {
-      contract = new NotificationContract(s, o, callback);
+      binding = new Binding(s, o, callback);
     }
     else
     {
-      contract = _contractPool.back();
-      contract->bind(s, o, callback);
-      _contractPool.pop_back();
+      binding = _bindingPool.back();
+      binding->bind(s, o, callback);
+      _bindingPool.pop_back();
     }
 
-    return contract;
+    return binding;
   }
 };
 
-bool operator==(NotificationMediator::NotificationContract const &first,
-                NotificationMediator::NotificationContract const &second);
+bool operator==(NotificationMediator::Binding const &first,
+                NotificationMediator::Binding const &second);
 #endif /* NOTIFICATIONMEDIATOR_H_ */

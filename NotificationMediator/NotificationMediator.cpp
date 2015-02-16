@@ -19,8 +19,8 @@ NotificationMediator::getSingleton()
 }
 
 
-bool operator==(NotificationMediator::NotificationContract const &first,
-                NotificationMediator::NotificationContract const &second)
+bool operator==(NotificationMediator::Binding const &first,
+                NotificationMediator::Binding const &second)
 {
   return (first._observer == second._observer) &&
          (first._observerCallback == second._observerCallback) &&

@@ -6,7 +6,12 @@
 
 void receiver(TestSubject const *, TestObserver &o, TestSubject::TestEvent const &event)
 {
-  std::cout << "receiver is called" << std::endl;
+  std::cout << "TestEvent receiver is called" << std::endl;
+}
+
+void otherReceiver(TestSubject const *, TestObserver &o, TestSubject::OtherEvent const &event)
+{
+  std::cout << "OtherEvent receiver is called" << std::endl;
 }
 
 int main()
@@ -16,6 +21,7 @@ int main()
 
   NotificationMediator::getSingleton().connect(subject, observer, &TestObserver::callback);
   NotificationMediator::getSingleton().connect(subject, observer, &receiver);
+  NotificationMediator::getSingleton().connect(subject, observer, &otherReceiver);
 
   NotificationMediator::getSingleton().notify(subject, TestSubject::TestEvent());
   NotificationMediator::getSingleton().notify(subject, TestSubject::OtherEvent());
@@ -25,5 +31,8 @@ int main()
 
   NotificationMediator::getSingleton().connect(subject, observer, &TestObserver::callback);
   NotificationMediator::getSingleton().notify(subject, TestSubject::TestEvent());
+
+  NotificationMediator::getSingleton().disConnect(subject, observer, &otherReceiver);
+  NotificationMediator::getSingleton().notify(subject, TestSubject::OtherEvent());
 }
 
