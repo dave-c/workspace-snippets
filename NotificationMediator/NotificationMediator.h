@@ -57,6 +57,26 @@ protected:
     Callback _nonMemberCallback;
   };
 
+  class BindingList : public std::list<Binding *>
+  {
+  public:
+    BindingList()
+      : std::list<Binding *>()
+      , _inNotify(false)
+    {}
+
+    void setInNotify(bool inNotify) { _inNotify = inNotify; }
+    bool inNotify() const { return _inNotify; }
+
+    BindingList(BindingList const &other)
+      : std::list<Binding *>(other)
+      , _inNotify(other._inNotify)
+    {}
+
+  private:
+    bool _inNotify;
+  };
+
   friend bool operator==(Binding const &first, Binding const &second);
 
 public:
@@ -104,7 +124,28 @@ public:
   {
     if (BindingList *bindings = hasBindings(&s, &typeid(E)))
     {
-      for (BindingList::iterator it = bindings->begin(); it != bindings->end(); ++it)
+      // Copy the binding list for connect/disconnect during notification
+      if (bindings->inNotify())
+        return;
+
+      struct ScopedNotify
+      {
+        ScopedNotify(BindingList *bindings)
+          : _bindings(bindings)
+        {
+          _bindings->setInNotify(true);
+        }
+
+        ~ScopedNotify()
+        {
+          _bindings->setInNotify(false);
+        }
+
+        BindingList *_bindings;
+      } _scopedNotify(bindings);
+
+      BindingList copy(*bindings);
+      for (BindingList::iterator it = copy.begin(); it != copy.end(); ++it)
       {
         (*it)->notify((Binding::Subject const &)s, event);
       }
@@ -122,7 +163,6 @@ private:
 
   static NotificationMediator *_singleton;
 
-  typedef std::list<Binding *> BindingList;
   typedef std::map<std::type_info const *, BindingList, EventComparator> EventBindingMap;
   typedef std::map<void const *, EventBindingMap> SubjectEventMap;
 
