@@ -6,6 +6,7 @@
 #include <map>
 #include <list>
 #include <typeinfo>
+#include <iostream>
 
 class NotificationMediator
 {
@@ -91,6 +92,7 @@ public:
     Binding binding(s, o, callback);
     if (!has(&s, binding, &typeid(E)))
     {
+      std::cout << "Adding binding for (" << &s << ")" << std::endl;
       _subjectEventMap[(void const*)&s][&typeid(E)].push_back(buildbinding(s, o, callback));
     }
   }
@@ -124,6 +126,7 @@ public:
   {
     if (BindingList *bindings = hasBindings(&s, &typeid(E)))
     {
+      std::cout << "Found bindings for (" << &s << ")" << std::endl;
       // Copy the binding list for connect/disconnect during notification
       if (bindings->inNotify())
         return;
@@ -145,6 +148,7 @@ public:
       } _scopedNotify(bindings);
 
       BindingList copy(*bindings);
+      std::cout << "Have (" << bindings->size() << ") bindings" << std::endl;
       for (BindingList::iterator it = copy.begin(); it != copy.end(); ++it)
       {
         (*it)->notify((Binding::Subject const &)s, event);

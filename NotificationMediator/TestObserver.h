@@ -13,7 +13,12 @@ public:
 
   void callback(TestSubject const &, TestSubject::TestEvent const &)
   {
-    std::cout << "Calling back" << std::endl;
+    std::cout << "TestObserver: getting call back" << std::endl;
+  }
+
+  virtual void virtualCallback(TestSubject const &, TestSubject::TestEvent const &)
+  {
+    std::cout << "TestObserver: getting virtual call back" << std::endl;
   }
 };
 

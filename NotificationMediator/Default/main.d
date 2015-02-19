@@ -1,5 +1,5 @@
 main.d: ../main.cpp ../NotificationMediator.h ../Event.h ../TestSubject.h \
- ../TestObserver.h
+ ../TestObserver.h ../FooSubject.h ../FooObserver.h
 
 ../NotificationMediator.h:
 
@@ -8,3 +8,7 @@ main.d: ../main.cpp ../NotificationMediator.h ../Event.h ../TestSubject.h \
 ../TestSubject.h:
 
 ../TestObserver.h:
+
+../FooSubject.h:
+
+../FooObserver.h:
