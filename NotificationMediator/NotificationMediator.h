@@ -15,47 +15,58 @@ protected:
   {
     class Subject;
     class Observer;
-    typedef void(Observer::*ObserverMemberCallback)(Subject const &s, Event const &event);
-    typedef void(*Callback)(Subject const &s, Observer &o, Event const &event);
+    typedef void(Observer::*MemberCallback)(Subject const &s, Event const &event);
+    typedef void(*NonMemberCallback)(Subject const &s, Event const &event);
 
     Binding();
 
     template <typename S, typename O, typename E>
     Binding(S const &s, O &o, void(O::*callback)(S const &s, E const &event))
       : _observer((Observer *)&o)
-      , _observerCallback((ObserverMemberCallback)callback)
-      , _nonMemberCallback(0)
+      , _callback((MemberCallback)callback)
       {}
 
-    template <typename S, typename O, typename E>
-    Binding(S const &s, O &o,  void(*callback)(S const &s, O &o, E const &event))
-      : _observer((Observer *)&o)
-      , _observerCallback(0)
-      , _nonMemberCallback((Callback)callback)
+    template <typename S, typename E>
+    Binding(S const &s, void(*callback)(S const &s, E const &event))
+      : _observer(0)
+      , _callback((NonMemberCallback)callback)
       {}
 
     template <typename S, typename O, typename E>
     void bind(S const &s, O &o, void(O::*callback)(S const &s, E const &event))
     {
       _observer = (Observer *)&o;
-      _observerCallback = (ObserverMemberCallback)callback;
-      _nonMemberCallback = 0LL;
+      _callback._memberCallback = (MemberCallback)callback;
     }
 
-    template <typename S, typename O, typename E>
-    void bind(S const &s, O &o, void(*callback)(S const &s, O &o, E const &event))
+    template <typename S, typename E>
+    void bind(S const &s, void(*callback)(S const &s, E const &event))
     {
-      _observer = (Observer *)&o;
-      _observerCallback = 0LL;
-      _nonMemberCallback = (Callback)callback;
+      _observer = 0LL;
+      _callback._nonMemberCallback = (NonMemberCallback)callback;
     }
 
     void notify(Subject const &s, Event const &event);
     void reset();
 
     Observer *_observer;
-    ObserverMemberCallback _observerCallback;
-    Callback _nonMemberCallback;
+    union Callback
+    {
+      Callback() {}
+
+      template <typename S, typename O, typename E>
+      Callback(void(O::*callback)(S const &s, E const &event))
+        : _memberCallback(callback)
+      {}
+
+      template <typename S, typename E>
+      Callback(void(*callback)(S const &s, E const &event))
+        : _nonMemberCallback(callback)
+      {}
+
+      MemberCallback _memberCallback;
+      NonMemberCallback _nonMemberCallback;
+    } _callback;
   };
 
   class BindingList : public std::list<Binding *>
@@ -97,13 +108,13 @@ public:
     }
   }
 
-  template <typename S, typename O, typename E>
-  void connect(S const &s, O &o, void (*callback)(S const &s, O &o, E const &event))
+  template <typename S, typename E>
+  void connect(S const &s, void (*callback)(S const &s, E const &event))
   {
-    Binding binding(s, o, callback);
+    Binding binding(s, callback);
     if (!has(&s, binding, &typeid(E)))
     {
-      _subjectEventMap[(void const*)&s][&typeid(E)].push_back(buildbinding(s, o, callback));
+      _subjectEventMap[(void const*)&s][&typeid(E)].push_back(buildbinding(s, callback));
     }
   }
 
@@ -114,10 +125,10 @@ public:
     removeBinding(&s, binding, &typeid(E));
   }
 
-  template <typename S, typename O, typename E>
-  void disConnect(S const &s, O &o, void (*callback)(S const &s, O &o, E const &event))
+  template <typename S, typename E>
+  void disConnect(S const &s, void (*callback)(S const &s, E const &event))
   {
-    Binding binding(s, o, callback);
+    Binding binding(s, callback);
     removeBinding(&s, binding, &typeid(E));
   }
 
@@ -201,18 +212,18 @@ private:
     return binding;
   }
 
-  template <typename S, typename O, typename E>
-  Binding *buildbinding(S const &s, O &o, void (*callback)(S const &s, O &o, E const &event))
+  template <typename S, typename E>
+  Binding *buildbinding(S const &s, void (*callback)(S const &s, E const &event))
   {
     Binding *binding = 0LL;
     if (_bindingPool.empty())
     {
-      binding = new Binding(s, o, callback);
+      binding = new Binding(s, callback);
     }
     else
     {
       binding = _bindingPool.back();
-      binding->bind(s, o, callback);
+      binding->bind(s, callback);
       _bindingPool.pop_back();
     }
 

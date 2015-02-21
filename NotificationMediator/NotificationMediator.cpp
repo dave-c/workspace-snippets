@@ -41,28 +41,23 @@ NotificationMediator::deleteBindings(BindingList &list)
 
 NotificationMediator::Binding::Binding()
   : _observer(0)
-  , _observerCallback(0)
-  , _nonMemberCallback(0)
 {}
 
 void
 NotificationMediator::Binding::notify(Subject const &s, Event const &event)
 {
-  if (!_observer)
-    return;
-
-  if (_observerCallback)
-    (*_observer.*_observerCallback)(s, event);
-  else if (_nonMemberCallback)
-    (*_nonMemberCallback)(s, *_observer, event);
+  if (_observer)
+    (*_observer.*(_callback._memberCallback))(s, event);
+  else if (_callback._nonMemberCallback)
+    (*(_callback._nonMemberCallback))(s, event);
 }
 
 void
 NotificationMediator::Binding::reset()
 {
   _observer = 0;
-  _observerCallback = 0;
-  _nonMemberCallback = 0;
+  _callback._memberCallback = 0;
+  _callback._nonMemberCallback = 0;
 }
 
 void
@@ -127,6 +122,6 @@ bool operator==(NotificationMediator::Binding const &first,
                 NotificationMediator::Binding const &second)
 {
   return (first._observer == second._observer) &&
-         (first._observerCallback == second._observerCallback) &&
-         (first._nonMemberCallback == second._nonMemberCallback);
+         (first._callback._memberCallback == second._callback._memberCallback) &&
+         (first._callback._nonMemberCallback == second._callback._nonMemberCallback) ;
 }
