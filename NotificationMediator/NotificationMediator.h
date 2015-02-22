@@ -104,7 +104,7 @@ public:
     if (!has(&s, binding, &typeid(E)))
     {
       std::cout << "Adding binding for (" << &s << ")" << std::endl;
-      _subjectEventMap[(void const*)&s][&typeid(E)].push_back(buildbinding(s, o, callback));
+      _subjectEventMap[(void const*)&s][&typeid(E)].push_back(createBinding(s, o, callback));
     }
   }
 
@@ -114,7 +114,7 @@ public:
     Binding binding(s, callback);
     if (!has(&s, binding, &typeid(E)))
     {
-      _subjectEventMap[(void const*)&s][&typeid(E)].push_back(buildbinding(s, callback));
+      _subjectEventMap[(void const*)&s][&typeid(E)].push_back(createBinding(s, callback));
     }
   }
 
@@ -195,7 +195,7 @@ private:
   void deleteBindings(BindingList &list);
 
   template <typename S, typename O, typename E>
-  Binding *buildbinding(S const &s, O &o, void (O::*callback)(S const &s, E const &event))
+  Binding *createBinding(S const &s, O &o, void (O::*callback)(S const &s, E const &event))
   {
     Binding *binding = 0LL;
     if (_bindingPool.empty())
@@ -213,7 +213,7 @@ private:
   }
 
   template <typename S, typename E>
-  Binding *buildbinding(S const &s, void (*callback)(S const &s, E const &event))
+  Binding *createBinding(S const &s, void (*callback)(S const &s, E const &event))
   {
     Binding *binding = 0LL;
     if (_bindingPool.empty())
