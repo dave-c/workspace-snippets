@@ -61,7 +61,7 @@ NotificationMediator::Binding::reset()
 }
 
 void
-NotificationMediator::removeBinding(void const *s, Binding const &binding, std::type_info const *eventInfo)
+NotificationMediator::removeBinding(void const *s, void const *o, Binding const &binding, std::type_info const *eventInfo)
 {
   if (BindingList *bindings = hasBindings(s, eventInfo))
   {
@@ -69,6 +69,9 @@ NotificationMediator::removeBinding(void const *s, Binding const &binding, std::
     if (it != bindings->end())
     {
       bindings->remove(*it);
+      if (o)
+        _observerBindingMap[o].erase(*it);
+
       (*it)->reset();
       _bindingPool.push_back(*it);
     }

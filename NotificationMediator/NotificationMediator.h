@@ -2,9 +2,11 @@
 #define _NotificationMediator_h_
 
 #include "Event.h"
+#include "DeleteEvent.h"
 
 #include <map>
 #include <list>
+#include <set>
 #include <typeinfo>
 #include <iostream>
 
@@ -91,6 +93,16 @@ protected:
 
   friend bool operator==(Binding const &first, Binding const &second);
 
+  void subjectDeleted(Binding::Subject const &subject, DeleteEvent const &event)
+  {
+
+  }
+
+  void observerDeleted(Binding::Subject const &subject, DeleteEvent const &event)
+  {
+
+  }
+
 public:
   NotificationMediator();
   virtual ~NotificationMediator();
@@ -104,7 +116,15 @@ public:
     if (!has(&s, binding, &typeid(E)))
     {
       std::cout << "Adding binding for (" << &s << ")" << std::endl;
-      _subjectEventMap[(void const*)&s][&typeid(E)].push_back(createBinding(s, o, callback));
+      Binding *binding = createBinding(s, o, callback);
+      _subjectEventMap[(void const*)&s][&typeid(E)].push_back(binding);
+      _observerBindingMap[(void const *)&o].insert(binding);
+    }
+
+    if ((void const *)&o != this)
+    {
+      connect((Binding::Subject const &)s, *this, &NotificationMediator::subjectDeleted);
+      connect((Binding::Subject const &)o, *this, &NotificationMediator::observerDeleted);
     }
   }
 
@@ -122,14 +142,18 @@ public:
   void disConnect(S const &s, O &o, void (O::*callback)(S const &s, E const &event))
   {
     Binding binding(s, o, callback);
-    removeBinding(&s, binding, &typeid(E));
-  }
+    removeBinding(&s, &o, binding, &typeid(E));
+
+    if ((void const *)&o != this)
+    {
+    }
+}
 
   template <typename S, typename E>
   void disConnect(S const &s, void (*callback)(S const &s, E const &event))
   {
     Binding binding(s, callback);
-    removeBinding(&s, binding, &typeid(E));
+    removeBinding(&s, 0, binding, &typeid(E));
   }
 
   template <typename S, typename E>
@@ -180,11 +204,13 @@ private:
 
   typedef std::map<std::type_info const *, BindingList, EventComparator> EventBindingMap;
   typedef std::map<void const *, EventBindingMap> SubjectEventMap;
+  typedef std::map<void const *, std::set<Binding *> > ObserverBindingMap;
 
   SubjectEventMap _subjectEventMap;
   BindingList _bindingPool;
+  ObserverBindingMap _observerBindingMap;
 
-  void removeBinding(void const *s, Binding const &binding, std::type_info const *eventInfo);
+  void removeBinding(void const *s, void const *o, Binding const &binding, std::type_info const *eventInfo);
 
   Binding *has(void const *s, Binding const &binding, std::type_info const *eventInfo);
 
